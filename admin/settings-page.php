@@ -53,13 +53,19 @@ $company_name = get_option('fb_company_name', get_bloginfo('name'));
                 </th>
                 <td>
                     <input type="text" 
-                           id="fb_whatsapp_number" 
-                           name="fb_whatsapp_number" 
-                           value="<?php echo esc_attr($whatsapp_number); ?>" 
-                           class="regular-text"
-                           placeholder="e.g., +1234567890">
+                        id="fb_whatsapp_number" 
+                        name="fb_whatsapp_number" 
+                        value="<?php echo esc_attr($whatsapp_number); ?>" 
+                        class="regular-text"
+                        placeholder="e.g., +628158833219">
                     <p class="description">
-                        <?php _e('Enter your WhatsApp number with country code (e.g., +1234567890)', 'floating-buttons'); ?>
+                        <?php _e('Enter your WhatsApp number with country code. Accepted formats:', 'floating-buttons'); ?>
+                        <br>
+                        - <?php _e('With plus sign: +628158833219', 'floating-buttons'); ?>
+                        <br>
+                        - <?php _e('Without plus sign: 628158833219', 'floating-buttons'); ?>
+                        <br>
+                        - <?php _e('Local format: 08158833219 (will be converted to 628158833219)', 'floating-buttons'); ?>
                     </p>
                 </td>
             </tr>

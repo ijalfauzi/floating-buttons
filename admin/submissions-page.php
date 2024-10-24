@@ -1,45 +1,49 @@
 <?php
-// admin/submissions-page.php
 if (!defined('ABSPATH')) {
     exit;
 }
 
-$fb_db = new Floating_Buttons_DB();
-$submissions = $fb_db->get_submissions(20, 1);
+// Handle bulk actions and single deletions
+if (isset($_REQUEST['action']) && isset($_REQUEST['submission'])) {
+    if (!current_user_can('manage_options')) {
+        wp_die(__('You do not have sufficient permissions to access this page.'));
+    }
+
+    $action = $_REQUEST['action'];
+    $submissions = (array) $_REQUEST['submission'];
+
+    if ($action === 'delete') {
+        if (is_array($submissions)) {
+            // Bulk delete
+            check_admin_referer('bulk-submissions');
+            $db = new Floating_Buttons_DB();
+            $db->delete_submissions($submissions);
+            $message = __('Submissions deleted successfully.', 'floating-buttons');
+        } else {
+            // Single delete
+            check_admin_referer('delete_submission_' . $submissions);
+            $db = new Floating_Buttons_DB();
+            $db->delete_submission($submissions);
+            $message = __('Submission deleted successfully.', 'floating-buttons');
+        }
+        
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($message) . '</p></div>';
+    }
+}
+
+// Display the list table
+require_once FB_PLUGIN_DIR . 'includes/class-submissions-list-table.php';
+$submissions_table = new FB_Submissions_List_Table();
+$submissions_table->prepare_items();
 ?>
 
 <div class="wrap">
-    <h1><?php _e('WhatsApp Chat Submissions', 'floating-buttons'); ?></h1>
+    <h1 class="wp-heading-inline"><?php _e('WhatsApp Chat Submissions', 'floating-buttons'); ?></h1>
     
-    <div class="fb-submissions-table">
-        <table class="wp-list-table widefat fixed striped">
-            <thead>
-                <tr>
-                    <th><?php _e('Name', 'floating-buttons'); ?></th>
-                    <th><?php _e('Email', 'floating-buttons'); ?></th>
-                    <th><?php _e('Company', 'floating-buttons'); ?></th>
-                    <th><?php _e('Date', 'floating-buttons'); ?></th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (!empty($submissions)) : ?>
-                    <?php foreach ($submissions as $submission) : ?>
-                        <tr>
-                            <td><?php echo esc_html($submission->name); ?></td>
-                            <td><?php echo esc_html($submission->email); ?></td>
-                            <td><?php echo esc_html($submission->company); ?></td>
-                            <td><?php echo wp_date(
-                                get_option('date_format') . ' ' . get_option('time_format'),
-                                strtotime($submission->date_created)
-                            ); ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php else : ?>
-                    <tr>
-                        <td colspan="4"><?php _e('No submissions found.', 'floating-buttons'); ?></td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
-        </table>
-    </div>
+    <form method="post">
+        <?php
+        $submissions_table->search_box(__('Search Submissions', 'floating-buttons'), 'submission-search');
+        $submissions_table->display();
+        ?>
+    </form>
 </div>

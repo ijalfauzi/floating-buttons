@@ -1,12 +1,43 @@
 <?php
-// includes/class-floating-buttons.php
+/**
+ * Main plugin class
+ * 
+ * @package Floating_Buttons
+ */
+
+if (!defined('ABSPATH')) {
+    exit;
+}
+
 class Floating_Buttons {
+    /**
+     * @var Floating_Buttons_Admin
+     */
     private $admin;
+
+    /**
+     * @var Floating_Buttons_DB
+     */
     private $db;
+
+    /**
+     * @var string
+     */
     private $whatsapp_number;
+
+    /**
+     * @var string
+     */
     private $notification_email;
+
+    /**
+     * @var string
+     */
     private $company_name;
 
+    /**
+     * Initialize the plugin
+     */
     public function init() {
         $this->admin = new Floating_Buttons_Admin();
         $this->db = new Floating_Buttons_DB();
@@ -14,40 +45,90 @@ class Floating_Buttons {
         $this->notification_email = get_option('fb_notification_email', get_option('admin_email'));
         $this->company_name = get_option('fb_company_name', get_bloginfo('name'));
 
+        // Register hooks
         add_action('wp_enqueue_scripts', array($this, 'enqueue_scripts'));
         add_shortcode('floating_buttons', array($this, 'render_floating_buttons'));
         add_action('wp_ajax_submit_whatsapp_form', array($this, 'handle_form_submission'));
         add_action('wp_ajax_nopriv_submit_whatsapp_form', array($this, 'handle_form_submission'));
     }
 
-    public function handle_form_submission() {
-        check_ajax_referer('fb-nonce', 'nonce');
-
-        $name = sanitize_text_field($_POST['name']);
-        $email = sanitize_email($_POST['email']);
-        $phone = sanitize_text_field($_POST['phone']);
-        $company = sanitize_text_field($_POST['company']);
-
-        $data = array(
-            'name' => $name,
-            'email' => $email,
-            'phone' => $phone,
-            'company' => $company,
-            'date_created' => current_time('mysql')
+    /**
+     * Enqueue scripts and styles
+     */
+    public function enqueue_scripts() {
+        wp_enqueue_style(
+            'floating-buttons-style',
+            FB_PLUGIN_URL . 'assets/css/floating-buttons.css',
+            array(),
+            '1.0.0'
         );
 
-        $result = $this->db->insert_submission($data);
+        wp_enqueue_script(
+            'floating-buttons-script',
+            FB_PLUGIN_URL . 'assets/js/floating-buttons.js',
+            array('jquery'),
+            '1.0.0',
+            true
+        );
 
-        if ($result) {
+        wp_localize_script('floating-buttons-script', 'fbAjax', array(
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('fb-nonce')
+        ));
+    }
+
+    /**
+     * Render the floating buttons
+     * 
+     * @return string
+     */
+    public function render_floating_buttons() {
+        ob_start();
+        include FB_PLUGIN_DIR . 'templates/floating-buttons.php';
+        return ob_get_clean();
+    }
+
+    /**
+     * Handle form submission via AJAX
+     */
+    public function handle_form_submission() {
+        try {
+            // Verify nonce
+            check_ajax_referer('fb-nonce', 'nonce');
+
+            // Verify required fields
+            $required_fields = array('name', 'email', 'phone', 'company');
+            foreach ($required_fields as $field) {
+                if (empty($_POST[$field])) {
+                    throw new Exception("Missing required field: {$field}");
+                }
+            }
+
+            // Sanitize input data
+            $data = array(
+                'name' => sanitize_text_field($_POST['name']),
+                'email' => sanitize_email($_POST['email']),
+                'phone' => sanitize_text_field($_POST['phone']),
+                'company' => sanitize_text_field($_POST['company']),
+                'date_created' => current_time('mysql')
+            );
+
+            // Insert into database
+            $result = $this->db->insert_submission($data);
+
+            if ($result === false) {
+                throw new Exception("Database insertion failed");
+            }
+
             // Send email notification
             $this->send_admin_notification($data);
 
             // Prepare WhatsApp message (excluding phone number)
             $whatsapp_message = sprintf(
                 "Name: %s\nEmail: %s\nCompany: %s",
-                $name,
-                $email,
-                $company
+                $data['name'],
+                $data['email'],
+                $data['company']
             );
             
             $whatsapp_url = sprintf(
@@ -60,13 +141,21 @@ class Floating_Buttons {
                 'message' => __('Form submitted successfully', 'floating-buttons'),
                 'whatsapp_url' => $whatsapp_url
             ));
-        } else {
+
+        } catch (Exception $e) {
             wp_send_json_error(array(
-                'message' => __('Error submitting form', 'floating-buttons')
+                'message' => $e->getMessage()
             ));
         }
+
+        wp_die();
     }
 
+    /**
+     * Send email notification to admin
+     * 
+     * @param array $data Form submission data
+     */
     private function send_admin_notification($data) {
         $subject = $this->company_name;
         $message = $this->get_notification_template($data);
@@ -79,6 +168,12 @@ class Floating_Buttons {
         wp_mail($this->notification_email, $subject, $message, $headers);
     }
 
+    /**
+     * Get HTML template for email notification
+     * 
+     * @param array $data Form submission data
+     * @return string HTML template
+     */
     private function get_notification_template($data) {
         $template = '<!DOCTYPE html>
         <html lang="en">
@@ -109,7 +204,9 @@ class Floating_Buttons {
                     </p>
                     <p style="margin: 0 0 10px 0; color: #374151;">
                         <strong style="display: inline-block; width: 100px;">Phone:</strong> 
-                        ' . esc_html($data['phone']) . '
+                        <a href="tel:' . esc_attr($data['phone']) . '" style="color: #2563eb; text-decoration: none;">
+                            ' . esc_html($data['phone']) . '
+                        </a>
                     </p>
                     <p style="margin: 0 0 10px 0; color: #374151;">
                         <strong style="display: inline-block; width: 100px;">Company:</strong> 

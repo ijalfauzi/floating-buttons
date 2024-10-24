@@ -1,5 +1,3 @@
-// assets/js/floating-buttons.js
-
 document.addEventListener('DOMContentLoaded', function() {
     const backToTopBtn = document.getElementById('backToTopBtn');
     const floatingButtons = document.getElementById('floatingButtons');
@@ -10,6 +8,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const verifyCheckbox = document.getElementById('verifyData');
     const submitButton = contactForm?.querySelector('button[type="submit"]');
     
+    // Field validation patterns
+    const validationPatterns = {
+        name: {
+            pattern: /^[a-zA-Z\s]{2,50}$/,
+            message: 'Name should only contain letters and be between 2-50 characters'
+        },
+        email: {
+            pattern: /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+            message: 'Please enter a valid email address'
+        },
+        phone: {
+            pattern: /^[0-9+\-() ]{10,15}$/,
+            message: 'Please enter a valid phone number'
+        },
+        company: {
+            pattern: /^[a-zA-Z0-9\s.,'-]{2,50}$/,
+            message: 'Company name should be between 2-50 characters'
+        }
+    };
+
     function toggleBackToTopButton() {
         if (window.pageYOffset > 300) {
             backToTopBtn.classList.remove('opacity-0');
@@ -20,97 +38,151 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Show/hide button when scrolling
     window.addEventListener('scroll', toggleBackToTopButton);
-
-    // Initial check
     toggleBackToTopButton();
 
-    // Smooth scroll to top
-    backToTopBtn.addEventListener('click', function() {
+    backToTopBtn?.addEventListener('click', function() {
         window.scrollTo({
             top: 0,
             behavior: 'smooth'
         });
     });
 
-    // Show popup when WhatsApp button is clicked
-    whatsappBtn.addEventListener('click', function() {
+    // Form popup controls
+    whatsappBtn?.addEventListener('click', function() {
         formPopup.classList.remove('hidden');
     });
 
-    // Close popup
-    closeForm.addEventListener('click', function() {
+    closeForm?.addEventListener('click', function() {
         formPopup.classList.add('hidden');
+        resetForm();
     });
 
-    // Close popup when clicking outside
-    formPopup.addEventListener('click', function(e) {
+    formPopup?.addEventListener('click', function(e) {
         if (e.target === formPopup) {
             formPopup.classList.add('hidden');
+            resetForm();
         }
     });
 
-    // Clear form
-    document.getElementById('clearForm')?.addEventListener('click', function() {
+    // Validation functions
+    const validateField = (input) => {
+        const field = input.id;
+        const value = input.value.trim();
+        const validationPattern = validationPatterns[field];
+
+        const existingError = input.nextElementSibling;
+        if (existingError?.classList.contains('error-message')) {
+            existingError.remove();
+        }
+
+        input.classList.remove('border-red-500', 'border-green-500');
+
+        if (!value) {
+            showError(input, 'This field is required');
+            return false;
+        }
+
+        if (!validationPattern.pattern.test(value)) {
+            showError(input, validationPattern.message);
+            return false;
+        }
+
+        input.classList.add('border-green-500');
+        return true;
+    };
+
+    const showError = (input, message) => {
+        input.classList.add('border-red-500');
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.textContent = message;
+        input.parentNode.insertBefore(errorDiv, input.nextSibling);
+    };
+
+    // Reset form function
+    const resetForm = () => {
         contactForm.reset();
         submitButton.disabled = true;
-        submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+        ['name', 'email', 'phone', 'company'].forEach(field => {
+            const input = document.getElementById(field);
+            input.classList.remove('border-red-500', 'border-green-500');
+            const errorMsg = input.nextElementSibling;
+            if (errorMsg?.classList.contains('error-message')) {
+                errorMsg.remove();
+            }
+        });
+    };
+
+    // Add field validation listeners
+    ['name', 'email', 'phone', 'company'].forEach(field => {
+        const input = document.getElementById(field);
+        input?.addEventListener('input', function() {
+            if (this.value.trim()) {
+                validateField(this);
+            }
+        });
+
+        input?.addEventListener('blur', function() {
+            validateField(this);
+        });
     });
 
     // Handle checkbox change
     verifyCheckbox?.addEventListener('change', function() {
-        if (this.checked) {
-            submitButton.disabled = false;
-            submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
-        } else {
-            submitButton.disabled = true;
-            submitButton.classList.add('opacity-50', 'cursor-not-allowed');
-        }
+        submitButton.disabled = !this.checked;
     });
 
-    // Initial state of submit button
+    // Initial submit button state
     if (submitButton && verifyCheckbox) {
         submitButton.disabled = !verifyCheckbox.checked;
-        if (submitButton.disabled) {
-            submitButton.classList.add('opacity-50', 'cursor-not-allowed');
-        }
     }
 
-    // Handle form submission
+    document.getElementById('clearForm')?.addEventListener('click', resetForm);
+
+    // Form submission
+    let isSubmitting = false;
+
     contactForm?.addEventListener('submit', function(e) {
         e.preventDefault();
+        
+        if (isSubmitting) return;
 
-        if (!verifyCheckbox.checked) {
-            alert('Please verify that your information is correct');
-            return;
-        }
+        const isValid = ['name', 'email', 'phone', 'company'].every(field => 
+            validateField(document.getElementById(field))
+        );
 
-        const formData = new FormData(contactForm);
-        formData.append('action', 'submit_whatsapp_form');
-        formData.append('nonce', fbAjax.nonce);
+        if (!isValid) return;
 
-        // Disable form while submitting
+        isSubmitting = true;
         const submitBtn = this.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerHTML;
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+        submitBtn.innerHTML = '<svg class="animate-spin h-5 w-5 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+
+        const formData = new FormData(this);
+        formData.append('action', 'submit_whatsapp_form');
+        formData.append('nonce', fbAjax.nonce);
 
         fetch(fbAjax.ajaxurl, {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin'
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Redirect to WhatsApp
-                window.location.href = data.data.whatsapp_url;
+                const whatsappUrl = data.data.whatsapp_url;
                 
-                // Close popup and reset form
+                // Reset and close form first
+                resetForm();
                 formPopup.classList.add('hidden');
-                contactForm.reset();
+                
+                // Single redirection in the same tab
+                window.location.replace(whatsappUrl);
             } else {
-                alert(data.data.message);
+                alert(data.data.message || 'Error submitting form');
             }
         })
         .catch(error => {
@@ -118,10 +190,16 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('An error occurred. Please try again.');
         })
         .finally(() => {
-            // Re-enable form
-            submitBtn.disabled = true;
+            isSubmitting = false;
+            submitBtn.disabled = !verifyCheckbox.checked;
             submitBtn.innerHTML = originalText;
-            verifyCheckbox.checked = false;
         });
+    });
+
+    // Prevent form from being submitted by Enter key
+    contactForm?.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+        }
     });
 });

@@ -1,5 +1,4 @@
 <?php
-// includes/class-floating-buttons-db.php
 class Floating_Buttons_DB {
     private $table_name;
 
@@ -27,9 +26,33 @@ class Floating_Buttons_DB {
         dbDelta($sql);
     }
 
-    public function insert_submission($data) {
+    public function get_submissions_count() {
+        global $wpdb;
+        return $wpdb->get_var("SELECT COUNT(*) FROM $this->table_name");
+    }
+
+    public function get_submissions($per_page = 10, $page = 1, $orderby = 'date_created', $order = 'DESC') {
         global $wpdb;
 
+        // Validate order and orderby parameters
+        $allowed_orderby = array('name', 'email', 'phone', 'company', 'date_created');
+        $orderby = in_array($orderby, $allowed_orderby) ? $orderby : 'date_created';
+        $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
+
+        $offset = ($page - 1) * $per_page;
+
+        $sql = $wpdb->prepare(
+            "SELECT * FROM $this->table_name ORDER BY %i $order LIMIT %d OFFSET %d",
+            $orderby,
+            $per_page,
+            $offset
+        );
+
+        return $wpdb->get_results($sql);
+    }
+
+    public function insert_submission($data) {
+        global $wpdb;
         return $wpdb->insert(
             $this->table_name,
             $data,
@@ -37,17 +60,19 @@ class Floating_Buttons_DB {
         );
     }
 
-    public function get_submissions($per_page = 10, $page = 1) {
+    public function delete_submission($id) {
         global $wpdb;
-
-        $offset = ($page - 1) * $per_page;
-
-        return $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM $this->table_name ORDER BY date_created DESC LIMIT %d OFFSET %d",
-                $per_page,
-                $offset
-            )
+        return $wpdb->delete(
+            $this->table_name,
+            array('id' => $id),
+            array('%d')
         );
+    }
+
+    public function delete_submissions($ids) {
+        global $wpdb;
+        $ids = array_map('intval', $ids);
+        $ids_string = implode(',', $ids);
+        return $wpdb->query("DELETE FROM $this->table_name WHERE id IN ($ids_string)");
     }
 }

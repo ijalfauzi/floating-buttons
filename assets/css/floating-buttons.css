@@ -10,3 +10,32 @@
 .fb-whatsapp-btn:hover {
     transform: scale(1.05);
 }
+
+/* Validation Styles */
+.error-message {
+    color: #ef4444;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+}
+
+input.border-red-500 {
+    border-color: #ef4444 !important;
+}
+
+input.border-green-500 {
+    border-color: #22c55e !important;
+}
+
+/* Loading Spinner */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
