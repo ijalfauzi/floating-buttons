@@ -1,0 +1,12 @@
+/* assets/css/floating-buttons.css */
+.fb-back-to-top {
+    transition: opacity 0.3s ease-in-out;
+}
+
+.fb-whatsapp-btn {
+    transition: transform 0.3s ease-in-out;
+}
+
+.fb-whatsapp-btn:hover {
+    transform: scale(1.05);
+}

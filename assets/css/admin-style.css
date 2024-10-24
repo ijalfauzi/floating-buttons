@@ -1,0 +1,13 @@
+/* assets/css/admin-style.css */
+.fb-settings-page {
+    max-width: 800px;
+    margin: 20px 0;
+}
+
+.fb-settings-page .form-table {
+    margin-top: 20px;
+}
+
+.fb-submissions-table {
+    margin-top: 20px;
+}
